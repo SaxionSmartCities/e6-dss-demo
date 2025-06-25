@@ -42,7 +42,7 @@ Do in PyCharm: Help -> Find Action: Registry
 Lookup <code>python.debug.asyncio.repl</code> and uncheck the box.
 
 ## Example
-When running the app with streamlit, the result looks like [![this screenshot](doc/dss-screenshot.png)
+See [here](doc/examples.md) for an example when running the app with streamlit.
 
 In the current version, tje model evaluates the inputs and calculates the probability for:
 * Commercial viability: Could the device still be sold in the thrift shop?

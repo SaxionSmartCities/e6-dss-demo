@@ -1,16 +1,17 @@
 #%%
 import importlib
-import time
 from datetime import datetime
+
 import altair as alt
+import numpy as np
 import pandas as pd
-
-
-import streamlit as st
 import pysmile
+import streamlit as st
+
 from smile_info import SmileInfo
 
 UNKNOWN = 'Unknown'
+show_detailed_outcome = False
 show_expert_gui = False
 
 # Prevent load error when script is re-run, cache the resource
@@ -93,24 +94,32 @@ def update_discrete_radio(label, node_id, radio_widget = True, help=None):
     set_evidence(node_id, st.session_state[node_id])
 
 def update_gui():
-    global show_expert_gui
-    show_expert_gui = st.toggle('Show expert interface', value=False)
     update_discrete_radio("Device category", "deviceCategory", radio_widget=False)
     warranty_time = st.number_input("Warranty time (months)", min_value=1, max_value=24, value=12, key="warrantyTime")
     bni.set_cont_evidence('warrantyTime', warranty_time / 12.0)
     update_discrete_radio("Brand category", "brand")
-    age_enabled = st.toggle('Age is known', value=False)
-    age = st.slider("Age", min_value=0, max_value=20, value=8, disabled=not age_enabled, key="age")
-    bni.set_cont_evidence('actualAge', age if age_enabled else None)
+    age_col1, age_col2 = st.columns([1, 3], vertical_alignment='center')
+    with age_col1:
+        age_disabled = st.toggle('Unknown', value=True)
+    with age_col2:
+        age = st.slider("Age", min_value=0, max_value=20, value=8, disabled=age_disabled, key="age")
+    bni.set_cont_evidence('actualAge', age if age_disabled else None)
     update_discrete_radio("Visual Condition", "visualCondition")
     update_discrete_radio("Usage Intensity", "usageIntensity")
-    update_discrete_radio("Device is working", "deviceWorking", help="Is the device fully functional (now or after repairs)?")
+    update_discrete_radio("Device is working", "deviceWorking", help="Assume the device is fully functional (now or after repairs)?")
     st.divider()
+    global show_expert_gui
+    global show_detailed_outcome
+    results_toggle_col1, results_toggle_col2 = st.columns(2, gap='large')
+    with results_toggle_col1:
+        show_expert_gui = st.toggle('Show probabilities', value=False)
+    with results_toggle_col2:
+        show_detailed_outcome = st.toggle('Show detailed evaluation', value=False)
 
 def show_results():
     labels = [
-        'P(Good saleability)',
-        'P(Good spare parts)',
+        'P(Commercial viability)',
+        'P(Spare parts quality)',
         'P(OK at age)',
         'P(Fail in warranty)',
     ]
@@ -139,36 +148,64 @@ def show_results():
     )
     st.altair_chart(probability_bars)
 
-def show_badges():
-    configs = (
-        {
-            'label': 'Commercial viability',
-            'cutoff': [40, 60],
-            'value': bni.get_posterior('saleability', 'Good') * 100,
-        }, {
-            'label': 'Spare parts potential',
-            'cutoff': [40, 60],
-            'value': bni.get_posterior('sparePartsQuality', 'Good') * 100,
-        }, {
-            'label': 'Risk of warranty return',
-            'cutoff': [94, 96],
-            'value': bni.get_posterior('deviceStillWorking', 'OK') * 100,
-        }
-    )
-    for cfg in configs:
-        color = "red" if cfg['value'] < cfg['cutoff'][0] else "green" if cfg['value'] >= cfg['cutoff'][1] else "orange"
-        st.html(f'''
-            <div style="display: flex; flex-flow: row nowrap; justify-items: space-between; align-items: center; width: 350px;">
-                <span style="flex: 1 1 auto">{cfg['label']}</span>
-                <div style="display:flex; flex-flow: row nowrap; flex: none; border: 2px solid grey; border-radius: 5px; gap: 5px; padding: 5px; background-color: darkgray;">
-                    <span style="flex: none; border-radius: 50%; width: 40px; height: 40px; background-color: {color if color == "red" else "lightgrey"}; border: 1px solid grey"></span>
-                    <span style="flex: none; border-radius: 50%; width: 40px; height: 40px; background-color: {color if color == "orange" else "lightgrey"}; border: 1px solid grey"></span>
-                    <span style="flex: none; border-radius: 50%; width: 40px; height: 40px; background-color: {color if color == "green" else "lightgrey"}; border: 1px solid grey"></span>
-                </div>
+def show_traffic_light(label, color):
+    st.html(f'''
+        <div style="display: flex; flex-flow: row nowrap; justify-items: space-between; align-items: center; width: 350px;">
+            <span style="flex: 1 1 auto">{label}</span>
+            <div style="display:flex; flex-flow: row nowrap; flex: none; border: 2px solid grey; border-radius: 5px; gap: 5px; padding: 5px; background-color: darkgray;">
+                <span style="flex: none; border-radius: 50%; width: 40px; height: 40px; background-color: {color if color == "red" else "lightgrey"}; border: 1px solid grey"></span>
+                <span style="flex: none; border-radius: 50%; width: 40px; height: 40px; background-color: {color if color == "orange" else "lightgrey"}; border: 1px solid grey"></span>
+                <span style="flex: none; border-radius: 50%; width: 40px; height: 40px; background-color: {color if color == "green" else "lightgrey"}; border: 1px solid grey"></span>
             </div>
-        ''')
+        </div>
+    ''')
 
-# Start main program
+def eval_kpi(cfgs):
+    colors = np.array([c['color'] for c in cfgs])
+    return "green" if np.all(colors == "green") else "red" if np.any(colors == "red") else "orange"
+
+def show_evaluation():
+    configs = ({
+        'label': 'Commercial viability',
+        'cutoff': [40, 60],
+        'value': bni.get_posterior('saleability', 'Good') * 100,
+        'kpi': ['reuse'],
+    }, {
+        'label': 'Spare parts quality',
+        'cutoff': [40, 60],
+        'value': bni.get_posterior('sparePartsQuality', 'Good') * 100,
+        'kpi': ['spares'],
+    }, {
+        'label': 'Risk of warranty return',
+        'cutoff': [94, 96],
+        'value': bni.get_posterior('deviceStillWorking', 'OK') * 100,
+        'kpi': ['reuse'],
+    })
+    main_config = {
+        'label': 'Reuse',
+        'value': bni.get_posterior('saleability', 'Good') * 100,
+    }
+    for cfg in configs:
+        cfg['color'] = "red" if cfg['value'] < cfg['cutoff'][0] else "green" if cfg['value'] >= cfg['cutoff'][1] else "orange"
+    reuse_configs = filter(lambda cfg: 'reuse' in cfg['kpi'], configs)
+    spares_configs = filter(lambda cfg: 'spares' in cfg['kpi'], configs)
+    reuse_color = eval_kpi(reuse_configs)
+    spares_color = eval_kpi(spares_configs)
+    st.divider()
+    lights_col1, lights_col2 = st.columns(2, gap='large')
+    with lights_col1:
+        show_traffic_light('Reuse', reuse_color)
+        show_traffic_light('Spare parts', spares_color)
+    with lights_col2:
+        if show_detailed_outcome:
+            for cfg in configs:
+                show_traffic_light(cfg['label'], cfg['color'])
+    if show_expert_gui:
+        st.divider()
+        st.markdown("_Probabilities are conditioned on values set above!_\n")
+        show_results()
+
+##############  Start main program  ################
 import_license()
 print_header()
 
@@ -181,7 +218,4 @@ update_gui()
 # Calculate the beliefs
 bni.update_beliefs()
 
-show_badges()
-if show_expert_gui:
-    st.markdown("_Probabilities are conditioned on values set above!_\n")
-    show_results()
+show_evaluation()
