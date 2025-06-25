@@ -14,7 +14,7 @@ UNKNOWN = 'Unknown'
 show_detailed_outcome = False
 show_expert_gui = False
 
-# Prevent load error when script is re-run, cache the resource
+# Prevent load error when the script is re-run, cache the resource
 @st.cache_resource
 def import_license():
     importlib.import_module("pysmile_license")
@@ -30,7 +30,7 @@ def print_header():
 @st.cache_resource
 def load_network(filename):
     net = pysmile.Network()
-    net.read_file("e6-dss.xdsl")
+    net.read_file(filename)
     # Bayesian Network Information. We have our owb convenience wrapper
     return SmileInfo(net)
 
@@ -67,7 +67,7 @@ def set_evidence(node_id, value):
     success = True
     try:
         bni.set_evidence(node_id, value if value and value != UNKNOWN else None)
-        # Successfull call, clear old value
+        # Successful call, clear old value
         # clear_view_state(node_id)
     except pysmile.SMILEException as e:
         success = False
@@ -76,7 +76,7 @@ def set_evidence(node_id, value):
             st.error(f"Error setting evidence for {node_id}: Conflicting evidence")
     return success
 
-def update_discrete_radio(label, node_id, radio_widget = True, help=None):
+def update_discrete_radio(label, node_id, radio_widget = True, tooltip=None):
     options = bni.list_outcome_ids(node_id)
     if node_id not in st.session_state:
         st.session_state[node_id] = UNKNOWN
@@ -87,7 +87,7 @@ def update_discrete_radio(label, node_id, radio_widget = True, help=None):
         st.session_state[node_id] = evidence if evidence is not None else UNKNOWN
         disabled = True
     if radio_widget:
-        st.radio(label, [UNKNOWN, *options], index=0, horizontal=True, key=node_id, disabled=disabled, help=help)
+        st.radio(label, [UNKNOWN, *options], index=0, horizontal=True, key=node_id, disabled=disabled, help=tooltip)
         # , on_change=save_view_state, args=(node_id, st.session_state[node_id]))
     else:
         st.selectbox(label, [UNKNOWN, *options], index=0, key=node_id, disabled=disabled)
@@ -106,7 +106,7 @@ def update_gui():
     bni.set_cont_evidence('actualAge', age if age_disabled else None)
     update_discrete_radio("Visual Condition", "visualCondition")
     update_discrete_radio("Usage Intensity", "usageIntensity")
-    update_discrete_radio("Device is working", "deviceWorking", help="Assume the device is fully functional (now or after repairs)?")
+    update_discrete_radio("Device is working", "deviceWorking", tooltip="Assume the device is fully functional (now or after repairs)?")
     st.divider()
     global show_expert_gui
     global show_detailed_outcome
@@ -181,14 +181,10 @@ def show_evaluation():
         'value': bni.get_posterior('deviceStillWorking', 'OK') * 100,
         'kpi': ['reuse'],
     })
-    main_config = {
-        'label': 'Reuse',
-        'value': bni.get_posterior('saleability', 'Good') * 100,
-    }
     for cfg in configs:
         cfg['color'] = "red" if cfg['value'] < cfg['cutoff'][0] else "green" if cfg['value'] >= cfg['cutoff'][1] else "orange"
-    reuse_configs = filter(lambda cfg: 'reuse' in cfg['kpi'], configs)
-    spares_configs = filter(lambda cfg: 'spares' in cfg['kpi'], configs)
+    reuse_configs = filter(lambda c: 'reuse' in c['kpi'], configs)
+    spares_configs = filter(lambda c: 'spares' in c['kpi'], configs)
     reuse_color = eval_kpi(reuse_configs)
     spares_color = eval_kpi(spares_configs)
     st.divider()
