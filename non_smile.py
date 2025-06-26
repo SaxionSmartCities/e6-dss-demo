@@ -1,5 +1,13 @@
 import numpy as np
 
+# If we would not use SMILE, but instead of that an open source library, what would be a wise choice?
+# There are (at least) two contenders: pgmpy and pomegranate.
+# pgmpy is a more recent development with a lot of features.
+# pomegranate is older with less active development at it seems.
+
+# The code is this file is a preparation for defining a Bayesian Network.
+# Now with SMILE, the original model can be used. That is a lot easier during research.
+
 categories =  ['Washing Machine', 'Dishwasher', 'Fridge', 'Vacuum Cleaner', 'Personal Care', 'Unknown']
 categoryScales = np.array([13.9, 13.2, 16.5, 10.3, 10.8])
 categoryShapes = np.array([2.2, 1.6, 2.2, 1.5, 1.3])
@@ -33,10 +41,6 @@ harvestabilityCPT = np.array([[[0.99, 0.01], [0, 1], [0, 1], [0, 1]], # the last
                              [[0.95, 0.05], [0.9, 0.1], [0.5, 0.5], [0.1, 0.9]],
                              [[0.9, 0.1], [0.8, 0.2], [0.4, 0.6], [0.05, 0.95]]
                             ])
-#pgmpy is recenter en heeft meer features (die wij niet nodig hebben waarschijnlijk
-#pomegranate is iets verouderd zo lijkt het
-# Van Bayesfusion kunnen we echter ook SMILE gebruiken, dat ius gratis voor academisch gebruik. Bovendien kan ik dan
-# het netwerk importeren van het model dat ik gebruik.
 
 age = 8
 warrantyPeriod = 1
