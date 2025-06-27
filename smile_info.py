@@ -5,6 +5,7 @@ from pysmile import SMILEException
 Prints information about the nodes in a network.
 """
 
+debug = False
 
 NODE_TYPES = {
     pysmile.NodeType.CPT: 'CPT',
@@ -54,6 +55,8 @@ class SmileInfo:
     def print_node_info_by_id(self, node_id):
         """Prints information about a node in the network by its node id"""
         node_handle = self.net.get_node(node_id)
+        if debug:
+            print(f'Node {node_id} --> {node_handle}')
         self.print_node_info(node_handle)
 
     def print_node_info(self, node_handle):
@@ -159,6 +162,17 @@ class SmileInfo:
             coords[i] = int(index / prod) % dim_sizes[i]
             prod *= dim_sizes[i]
 
+    def get_posteriors_by_id(self, node_id, state = None):
+        results = dict()
+        node_handle = self.net.get_node(node_id)
+        if not self.net.is_evidence(node_handle) and self.net.is_value_valid(node_handle):
+            posteriors = self.net.get_node_value(node_handle)
+            for i in range(0, len(posteriors)):
+                outcome_id = self.net.get_outcome_id(node_handle, i)
+                if state is None or state == outcome_id:
+                    results[outcome_id] = posteriors[i]
+        return results
+
     def print_posteriors(self, node_handle, state = None):
         node_id = self.net.get_node_id(node_handle)
         if self.net.is_evidence(node_handle):
@@ -168,7 +182,7 @@ class SmileInfo:
             for i in range(0, len(posteriors)):
                 outcome_id = self.net.get_outcome_id(node_handle, i)
                 if state is None or state == outcome_id:
-                    print(f"P({node_id}={outcome_id}) = {posteriors[i]}")
+                    print(f"P({node_id} = {outcome_id}) = {posteriors[i]}")
 
     def print_posteriors_by_id(self, node_id, state = None):
         node_handle = self.net.get_node(node_id)

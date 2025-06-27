@@ -49,7 +49,14 @@ def set_evidence(node_id, value):
             st.error(f"Error setting evidence for {node_id}: Conflicting evidence")
     return success
 
-def update_discrete_radio(label, node_id, radio_widget = True, index=0, tooltip=None):
+def get_age_category():
+    posteriors = { k: v for k, v in bni.get_posteriors_by_id('actualAgeCategory').items() if v > 0 }
+    label = ''
+    if len(posteriors) == 1:
+        label = list(posteriors.keys())[0]
+    return label
+
+def update_select_one(label, node_id, radio_widget = True, index=0, tooltip=None):
     options = bni.list_outcome_ids(node_id)
     # The following line conflicts wit the initialization of the widget itself when index != 0
     # if node_id not in st.session_state:
@@ -67,20 +74,27 @@ def update_discrete_radio(label, node_id, radio_widget = True, index=0, tooltip=
     set_evidence(node_id, st.session_state[node_id])
 
 def update_gui():
-    update_discrete_radio("Device category", "deviceCategory", radio_widget=False)
-    warranty_time = st.number_input("Warranty time (months)", min_value=1, max_value=24, value=12, key="warrantyTime")
-    bni.set_cont_evidence('warrantyTime', warranty_time / 12.0)
-    update_discrete_radio("Brand category", "brand")
+    top_col1, top_col2 = st.columns(2, vertical_alignment='center')
+    with top_col1:
+        update_select_one("Device category", "deviceCategory", radio_widget=False)
+    with top_col2:
+        warranty_time = st.number_input("Warranty time (months)", min_value=1, max_value=24, value=12, key="warrantyTime")
+        bni.set_cont_evidence('warrantyTime', warranty_time / 12.0)
+
+    update_select_one("Brand category", "brand")
+
     age_col1, age_col2 = st.columns([1, 3], vertical_alignment='center')
     with age_col1:
         age_disabled = st.toggle('Unknown', value=True)
     with age_col2:
         age = st.slider("Age", min_value=0, max_value=20, value=8, disabled=age_disabled, key="age")
-    bni.set_cont_evidence('actualAge', age if not age_disabled else None)
-    update_discrete_radio("Visual Condition", "visualCondition")
-    update_discrete_radio("Usage Intensity", "usageIntensity")
-    update_discrete_radio("Device is working", "deviceWorking", index=1, tooltip="Assume the device is fully functional (now or after repairs)?")
+        bni.set_cont_evidence('actualAge', age if not age_disabled else None)
+
+    update_select_one("Visual Condition", "visualCondition")
+    update_select_one("Usage Intensity", "usageIntensity")
+    update_select_one("Device is working", "deviceWorking", index=1, tooltip="Assume the device is fully functional (now or after repairs)?")
     st.divider()
+
     global show_expert_gui
     global show_detailed_outcome
     results_toggle_col1, results_toggle_col2 = st.columns(2, gap='large')
@@ -91,12 +105,14 @@ def update_gui():
 
 def show_results():
     labels = [
+        # 'P(Perceived quality)',
         'P(Commercial viability)',
         'P(Spare parts quality)',
         'P(OK at age)',
         'P(Fail in warranty)',
     ]
     values = [
+        # bni.get_posterior('perceivedQuality', 'High') * 100,
         bni.get_posterior('saleability', 'Good') * 100,
         bni.get_posterior('sparePartsQuality', 'Good') * 100,
         bni.get_posterior('deviceWorking', 'OK') * 100,
@@ -120,6 +136,8 @@ def show_results():
         y=alt.Y('var', ).title('').sort(None)
     )
     st.altair_chart(probability_bars)
+    # st.write(f'Age category: {get_age_category()}')
+
 
 def show_traffic_light(label, color):
     st.html(f'''
@@ -138,7 +156,13 @@ def eval_kpi(cfgs):
     return "green" if np.all(colors == "green") else "red" if np.any(colors == "red") else "orange"
 
 def show_evaluation():
-    configs = ({
+    configs = (
+    {
+    #     'label': 'Perceived quality',
+    #     'cutoff': [40, 60],
+    #     'value': bni.get_posterior('perceivedQuality', 'High') * 100,
+    #     'kpi': [],
+    # }, {
         'label': 'Commercial viability',
         'cutoff': [40, 60],
         'value': bni.get_posterior('saleability', 'Good') * 100,
@@ -150,7 +174,7 @@ def show_evaluation():
         'kpi': ['spares'],
     }, {
         'label': 'Risk of warranty return',
-        'cutoff': [94, 96],
+        'cutoff': [93, 95],
         'value': bni.get_posterior('deviceStillWorking', 'OK') * 100,
         'kpi': ['reuse'],
     })
@@ -176,9 +200,14 @@ def show_evaluation():
 
 def print_debug_info():
     try:
-        bni.print_node_info_by_id('actualAge')
-        bni.print_node_info_by_id('normAge')
-        bni.print_node_info_by_id('effectiveAge')
+        # bni.print_node_info_by_id('actualAge')
+        # bni.print_node_info_by_id('normAge')
+        # bni.print_node_info_by_id('effectiveAge')
+        # bni.print_node_info_by_id('technicalCondition')
+        bni.print_posteriors_by_id('technicalCondition')
+        # bni.print_node_info_by_id('actualAgeCategory')
+        bni.print_posteriors_by_id('actualAgeCategory')
+
     except pysmile.SMILEException as e:
         print(e)
 
