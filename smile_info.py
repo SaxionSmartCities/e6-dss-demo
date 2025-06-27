@@ -1,5 +1,3 @@
-from warnings import catch_warnings
-
 import pysmile
 from pysmile import SMILEException
 

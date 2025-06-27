@@ -10,10 +10,11 @@ import streamlit as st
 
 from smile_info import SmileInfo
 
+debug = False
+
 UNKNOWN = 'Unknown'
 show_detailed_outcome = False
 show_expert_gui = False
-
 # Prevent load error when the script is re-run, cache the resource
 @st.cache_resource
 def import_license():
@@ -36,61 +37,33 @@ def load_network(filename):
 
 
 # Unfortunately, it is not possible to update the GUI after an application error
-# What we need is a programmatic rerun to restore the GUI
-
-# if 'view_state' not in st.session_state:
-#     st.session_state.view_state = {}
-# if 'pre_error_state' not in st.session_state:
-#     st.session_state.pre_error_state = {}
-#
-# def save_view_state(node_id, old_value):
-#     print(f"save_view_state({node_id}, old = {old_value}, new = {st.session_state[node_id]})")
-#     st.session_state.view_state[node_id] = old_value
-#
-# def clear_view_state(node_id):
-#     print(f"clear view_state({node_id})")
-#     st.session_state.view_state[node_id] = None
-#
-# def save_view_state_to_pre_error_state(node_id):
-#     print(f"save pre_error_state({node_id} = {st.session_state.view_state[node_id]})")
-#     st.session_state.pre_error_state[node_id] = st.session_state.view_state[node_id]
-#
-# def restore_session_from_pre_error_state(node_id):
-#     if node_id not in st.session_state.pre_error_state:
-#         st.session_state.pre_error_state[node_id] = None
-#     print(f"restore pre_error_state({node_id} = {st.session_state.pre_error_state[node_id]})")
-#     if st.session_state.pre_error_state[node_id] is not None:
-#         st.session_state[node_id] = st.session_state.pre_error_state[node_id]
-#         st.session_state.pre_error_state[node_id] = None
+# What we need is a programmatic rerun to restore the GUI after an error
 
 def set_evidence(node_id, value):
     success = True
     try:
         bni.set_evidence(node_id, value if value and value != UNKNOWN else None)
-        # Successful call, clear old value
-        # clear_view_state(node_id)
     except pysmile.SMILEException as e:
         success = False
-        # save_view_state_to_pre_error_state(node_id)
         if e.error_code == -26:
             st.error(f"Error setting evidence for {node_id}: Conflicting evidence")
     return success
 
-def update_discrete_radio(label, node_id, radio_widget = True, tooltip=None):
+def update_discrete_radio(label, node_id, radio_widget = True, index=0, tooltip=None):
     options = bni.list_outcome_ids(node_id)
-    if node_id not in st.session_state:
-        st.session_state[node_id] = UNKNOWN
-    # restore_session_from_pre_error_state(node_id)
+    # The following line conflicts wit the initialization of the widget itself when index != 0
+    # if node_id not in st.session_state:
+    #     st.session_state[node_id] = UNKNOWN
     disabled = False
     if bni.has_propagated_evidence(node_id):
         evidence = bni.get_evidence(node_id)
         st.session_state[node_id] = evidence if evidence is not None else UNKNOWN
         disabled = True
     if radio_widget:
-        st.radio(label, [UNKNOWN, *options], index=0, horizontal=True, key=node_id, disabled=disabled, help=tooltip)
+        st.radio(label, [UNKNOWN, *options], index=index, horizontal=True, key=node_id, disabled=disabled, help=tooltip)
         # , on_change=save_view_state, args=(node_id, st.session_state[node_id]))
     else:
-        st.selectbox(label, [UNKNOWN, *options], index=0, key=node_id, disabled=disabled)
+        st.selectbox(label, [UNKNOWN, *options], index=index, key=node_id, disabled=disabled)
     set_evidence(node_id, st.session_state[node_id])
 
 def update_gui():
@@ -103,10 +76,10 @@ def update_gui():
         age_disabled = st.toggle('Unknown', value=True)
     with age_col2:
         age = st.slider("Age", min_value=0, max_value=20, value=8, disabled=age_disabled, key="age")
-    bni.set_cont_evidence('actualAge', age if age_disabled else None)
+    bni.set_cont_evidence('actualAge', age if not age_disabled else None)
     update_discrete_radio("Visual Condition", "visualCondition")
     update_discrete_radio("Usage Intensity", "usageIntensity")
-    update_discrete_radio("Device is working", "deviceWorking", tooltip="Assume the device is fully functional (now or after repairs)?")
+    update_discrete_radio("Device is working", "deviceWorking", index=1, tooltip="Assume the device is fully functional (now or after repairs)?")
     st.divider()
     global show_expert_gui
     global show_detailed_outcome
@@ -201,6 +174,15 @@ def show_evaluation():
         st.markdown("_Probabilities are conditioned on values set above!_\n")
         show_results()
 
+def print_debug_info():
+    try:
+        bni.print_node_info_by_id('actualAge')
+        bni.print_node_info_by_id('normAge')
+        bni.print_node_info_by_id('effectiveAge')
+    except pysmile.SMILEException as e:
+        print(e)
+
+
 ##############  Start main program  ################
 import_license()
 print_header()
@@ -215,3 +197,5 @@ update_gui()
 bni.update_beliefs()
 
 show_evaluation()
+if debug:
+    print_debug_info()
