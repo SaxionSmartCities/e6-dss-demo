@@ -11,6 +11,7 @@ import numpy as np
 categories =  ['Washing Machine', 'Dishwasher', 'Fridge', 'Vacuum Cleaner', 'Personal Care', 'Unknown']
 categoryScales = np.array([13.9, 13.2, 16.5, 10.3, 10.8])
 categoryShapes = np.array([2.2, 1.6, 2.2, 1.5, 1.3])
+reuseOnlyIfPackaged = np.array([False, False, False, False, True, False])
 
 brands = ['A', 'B', 'Budget', 'Unknown']
 brandCPT = np.array([0.2, 0.5, 0.3])

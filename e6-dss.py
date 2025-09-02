@@ -15,6 +15,12 @@ debug = False
 UNKNOWN = 'Unknown'
 show_detailed_outcome = False
 show_expert_gui = False
+
+categories =  ['Unknown', 'Washing Machine', 'Dishwasher', 'Fridge', 'Vacuum Cleaner', 'Personal Care']
+categoryScales = np.array([10.0, 13.9, 13.2, 16.5, 10.3, 10.8])
+categoryShapes = np.array([2.0, 2.2, 1.6, 2.2, 1.5, 1.3])
+reuseOnlyIfPackaged = np.array([False, False, False, False, False, True])
+
 # Prevent load error when the script is re-run, cache the resource
 @st.cache_resource
 def import_license():
@@ -56,9 +62,10 @@ def get_age_category():
         label = list(posteriors.keys())[0]
     return label
 
+
 def update_select_one(label, node_id, radio_widget = True, index=0, tooltip=None):
     options = bni.list_outcome_ids(node_id)
-    # The following line conflicts wit the initialization of the widget itself when index != 0
+    # The following line conflicts with the initialization of the widget itself when index != 0
     # if node_id not in st.session_state:
     #     st.session_state[node_id] = UNKNOWN
     disabled = False
@@ -76,7 +83,13 @@ def update_select_one(label, node_id, radio_widget = True, index=0, tooltip=None
 def update_gui():
     top_col1, top_col2 = st.columns(2, vertical_alignment='center')
     with top_col1:
-        update_select_one("Device category", "deviceCategory", radio_widget=False)
+        selected = st.selectbox("Device category", categories, index=0, key="deviceCategory")
+        # st.selectbox("Device category", categories, index=categories.index(st.session_state['deviceCategory']), key='deviceCategory')
+        index = categories.index(selected)
+        shape = categoryShapes[index]
+        scale = categoryScales[index]
+        bni.set_cont_evidence("deviceCategoryScale", scale)
+        bni.set_cont_evidence("deviceCategoryShape", shape)
     with top_col2:
         warranty_time = st.number_input("Warranty time (months)", min_value=1, max_value=24, value=12, key="warrantyTime")
         bni.set_cont_evidence('warrantyTime', warranty_time / 12.0)
