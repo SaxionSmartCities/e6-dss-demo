@@ -44,9 +44,9 @@
 			<parents>deviceCategory</parents>
 			<resultingstates>WashingMachine Dishwasher Fridge VacuumCleaner PersonalCare Other</resultingstates>
 		</deterministic>
-		<equation id="effectiveScale">
+		<equation id="normBrandScale">
 			<parents>brandScaleFactor</parents>
-			<definition lower="0.5" upper="3">effectiveScale=TruncNormal(1*brandScaleFactor,0.2,0.5,3)</definition>
+			<definition lower="0.5" upper="3">normBrandScale=TruncNormal(1*brandScaleFactor,0.2,0.5,3)</definition>
 			<discretization>
 				<interval upper="0.6" />
 				<interval upper="0.7" />
@@ -82,9 +82,9 @@
 			<parents>deviceCategory</parents>
 			<resultingstates>WashingMachine Dishwasher Fridge VacuumCleaner PersonalCare Other</resultingstates>
 		</deterministic>
-		<equation id="effectiveShape">
+		<equation id="brandCategoryShape">
 			<parents>brandShapeFactor deviceCategoryShape</parents>
-			<definition lower="1" upper="3.5">effectiveShape=TruncNormal(brandShapeFactor*deviceCategoryShape,0.2,1,3.5)</definition>
+			<definition lower="1" upper="3.5">brandCategoryShape=TruncNormal(brandShapeFactor*deviceCategoryShape,0.2,1,3.5)</definition>
 			<discretization>
 				<interval upper="1.1" />
 				<interval upper="1.2" />
@@ -114,8 +114,8 @@
 			</discretization>
 		</equation>
 		<equation id="timeToFailure">
-			<parents>effectiveScale effectiveShape</parents>
-			<definition lower="0" upper="6">timeToFailure=Min(Weibull(effectiveScale,effectiveShape),6)</definition>
+			<parents>normBrandScale brandCategoryShape</parents>
+			<definition lower="0" upper="6">timeToFailure=Min(Weibull(normBrandScale,brandCategoryShape),6)</definition>
 			<discretization>
 				<interval upper="0.1" />
 				<interval upper="0.2" />
@@ -213,9 +213,9 @@
 			<parents>usageIntensity</parents>
 			<resultingstates>AsNew GentlyUsed Normal Intensively</resultingstates>
 		</deterministic>
-		<equation id="effectiveAge">
+		<equation id="technicalAge">
 			<parents>normAge agingFactor</parents>
-			<definition lower="0" upper="3">effectiveAge=TruncNormal(agingFactor*normAge,agingFactor/10,0,3)</definition>
+			<definition lower="0" upper="3">technicalAge=TruncNormal(agingFactor*normAge,agingFactor/10,0,3)</definition>
 			<discretization>
 				<interval upper="0.1" />
 				<interval upper="0.2" />
@@ -240,8 +240,8 @@
 			</discretization>
 		</equation>
 		<equation id="scaledAge">
-			<parents>effectiveAge effectiveScale</parents>
-			<definition lower="0" upper="5">scaledAge=Min(effectiveAge/effectiveScale,5)</definition>
+			<parents>technicalAge normBrandScale</parents>
+			<definition lower="0" upper="5">scaledAge=Min(technicalAge/normBrandScale,5)</definition>
 			<discretization>
 				<interval upper="0.1" />
 				<interval upper="0.2" />
@@ -305,8 +305,8 @@
 			</discretization>
 		</equation>
 		<equation id="deviceWorksAtAge">
-			<parents>timeToFailure effectiveAge</parents>
-			<definition lower="0" upper="1">deviceWorksAtAge=timeToFailure&gt;effectiveAge</definition>
+			<parents>timeToFailure technicalAge</parents>
+			<definition lower="0" upper="1">deviceWorksAtAge=timeToFailure&gt;technicalAge</definition>
 			<discretization>
 				<interval label="Fail" upper="0.5" />
 				<interval label="OK" upper="1" />
@@ -339,14 +339,14 @@
 			</discretization>
 		</equation>
 		<equation id="deviceWorksAtEndWarranty">
-			<parents>timeToFailure effectiveAge normWarrantyTime</parents>
-			<definition lower="0" upper="1">deviceWorksAtEndWarranty=timeToFailure&gt;effectiveAge+normWarrantyTime</definition>
+			<parents>timeToFailure technicalAge normWarrantyTime</parents>
+			<definition lower="0" upper="1">deviceWorksAtEndWarranty=timeToFailure&gt;technicalAge+normWarrantyTime</definition>
 			<discretization>
 				<interval label="Fail" upper="0.5" />
 				<interval label="OK" upper="1" />
 			</discretization>
 		</equation>
-		<cpt id="perceivedQuality">
+		<cpt id="estimatedQuality">
 			<state id="High" />
 			<state id="Low" />
 			<parents>technicalCondition visualCondition</parents>
@@ -367,7 +367,7 @@
 		<cpt id="saleability">
 			<state id="Good" />
 			<state id="Bad" />
-			<parents>reusableProduct perceivedQuality actualAgeCategory</parents>
+			<parents>reusableProduct estimatedQuality actualAgeCategory</parents>
 			<probabilities>1 0 0.9 0.1 0.8 0.2 0.6 0.4 0.2 0.8 0.5 0.5 0.4 0.6 0.2 0.8000000000000002 0.1 0.9 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1 0 1</probabilities>
 		</cpt>
 		<deterministic id="deviceStillWorking">
@@ -398,7 +398,8 @@
 				<interior color="e5f6f7" />
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
-				<position>200 695 251 726</position>
+				<position>198 694 249 725</position>
+				<comment>The Weibull distribution for a normalized (brand-dependent) scale and a brand-dependent shape. An age of 1 corresponds with a CDF where 63.2% of the devices have failed.</comment>
 				<barchart active="true" width="289" height="558" />
 			</node>
 			<node id="brandShapeFactor">
@@ -417,12 +418,13 @@
 				<position>632 284 767 341</position>
 				<barchart active="true" width="142" height="84" />
 			</node>
-			<node id="effectiveAge">
-				<name>effectiveAge</name>
+			<node id="technicalAge">
+				<name>technicalAge</name>
 				<interior color="e5f6f7" />
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>1033 637 1181 718</position>
+				<comment>The technicalAge is the normalized age corrected for the usage of the device. A heavily used device is technically older than a gently used device.</comment>
 				<barchart width="197" height="108" />
 			</node>
 			<node id="deviceCategoryScale">
@@ -457,12 +459,13 @@
 				<position>653 754 816 823</position>
 				<barchart width="348" height="115" />
 			</node>
-			<node id="effectiveScale">
-				<name>effectiveScale</name>
+			<node id="normBrandScale">
+				<name>normBrandScale</name>
 				<interior color="e5f6f7" />
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>398 423 519 491</position>
+				<comment>The normScale adapts the Weibull distribution for the differences in brand category by shifting the median to the right for an A-brand, resp., to the left for a budget brand. \n\nAn input age (normalized) of normScale in the Weibull curve refers to the point in time where on averge 63.2% of all devices have had a failure. \n</comment>
 				<barchart width="128" height="378" />
 			</node>
 			<node id="deviceCategoryShape">
@@ -473,12 +476,13 @@
 				<position>165 99 281 171</position>
 				<barchart active="true" width="245" height="145" />
 			</node>
-			<node id="effectiveShape">
-				<name>effectiveShape</name>
+			<node id="brandCategoryShape">
+				<name>brandCategoryShape</name>
 				<interior color="e5f6f7" />
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>154 284 295 358</position>
+				<comment>The brandCategoryShape adapts the device category shape somewhat to have less random failure for an A-brand, and more for a budget brand.</comment>
 				<barchart width="128" height="288" />
 			</node>
 			<node id="usageIntensity">
@@ -511,6 +515,7 @@
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>1296 644 1431 715</position>
+				<comment>The normAge is the normalized age of a device. This is the calender age divided by the Weibull scale parameter for the specific  device category.\n\nAn normalized age of 1 means that a device of average quality and average usage has reached its end-of-life state. </comment>
 				<barchart width="128" height="108" />
 			</node>
 			<node id="normWarrantyTime">
@@ -558,15 +563,17 @@
 				<interior color="e5f6f7" />
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
-				<position>1549 406 1589 431</position>
+				<position>1548 405 1588 430</position>
+				<comment>Thios variable represents an age category as perceived by a non-technical person, without regards for the technical state of the device.</comment>
 				<barchart active="true" width="180" height="108" />
 			</node>
-			<node id="perceivedQuality">
-				<name>perceivedQuality</name>
+			<node id="estimatedQuality">
+				<name>estimatedQuality</name>
 				<interior color="e5f6f7" />
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>1087 234 1184 294</position>
+				<comment>The estimation of the qiuality is based on the estimated technical condition (related to age and usage intensity)  and  visual condition.</comment>
 				<barchart active="true" width="128" height="64" />
 			</node>
 			<node id="saleability">
@@ -578,7 +585,7 @@
 				<barchart active="true" width="128" height="64" />
 			</node>
 			<textbox>
-				<caption>The effectiveScale corrigates the Weibull distribution for the differences in brand category by shifting the median to the right for an A-brand, resp., to the left for a budget brand.\n\nSimilar, the effective shape corrects the shape somewhat to have less random failure for an A-brand, and more for a budget brand.</caption>
+				<caption>The effectiveScale adapts the Weibull distribution for the differences in brand category by shifting the median to the right for an A-brand, resp., to the left for a budget brand.\n\nSimilar, the effective shape adapts the shape somewhat to have less random failure for an A-brand, and more for a budget brand.</caption>
 				<font color="000000" name="Arial" size="8" />
 				<position>67 1028 373 1126</position>
 			</textbox>
@@ -588,6 +595,7 @@
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>866 192 906 217</position>
+				<comment>The technical condition is a brand independent estimation of the condition of a device.</comment>
 				<barchart active="true" width="180" height="108" />
 			</node>
 			<node id="scaledAge">
@@ -596,6 +604,7 @@
 				<outline color="000080" />
 				<font color="000000" name="Arial" size="8" />
 				<position>826 429 947 484</position>
+				<comment>The scaled age is the ratio between the technical age and the normalized brand scale. Is is a measure for the technical condition. \n\nA technical age of 1 is for a B-brand the nominal value, but is relatively old for a budget brand. For an A-brand the technical condition is expected to better than indicated by technical age alone.</comment>
 			</node>
 			<node id="sparePartsQuality">
 				<name>sparePartsQuality</name>
